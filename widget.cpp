@@ -10,27 +10,33 @@
 Widget::Widget(QWidget *parent)
 : QWidget(parent)
 {
-setWindowTitle("UDP Sender");
+setWindowTitle("UDP Receiver");
 
 socket=new QUdpSocket(this);
-connect(socket, SIGNAL(bytesWritten(qint64)), this, SLOT(datagramSent()));
+socket->bind(QHostAddress::Any, 5000);
+connect(socket, SIGNAL(readyRead()), this, SLOT(datagramRecv()));
 
 QVBoxLayout *layout=new QVBoxLayout(this);
 
-message=new QLineEdit(this);
-layout->addWidget(message);
-
-QPushButton *send=new QPushButton("&Send", this);
-connect(send, SIGNAL(clicked()), this, SLOT(datagramSend()));
-layout->addWidget(send);
+trace=new QTextEdit(this);
+trace->setReadOnly(true);
+trace->append("UDP Trace:");
+layout->addWidget(trace);
 }
 
 Widget::~Widget(){}
 
-void Widget::datagramSend(){
-socket->writeDatagram(message->text().toAscii(), QHostAddress::Any, 5000);
-}
+void Widget::datagramRecv(){
+QByteArray data;
+QHostAddress host;
+quint16 port;
 
-void Widget::datagramSent(){
-qDebug() << "Datagram Sent";
+while(socket->hasPendingDatagrams()){
+    data.resize(socket->pendingDatagramSize());
+    socket->readDatagram(data.data(), data.size(), &host, &port);
+
+    QString portStr;
+    portStr.setNum(ulong(port));
+    trace->append(QString("%1:%2 -> %3").arg(host.toString(), portStr, data));
+}
 }
